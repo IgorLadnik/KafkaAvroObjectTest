@@ -83,7 +83,7 @@ namespace KafkaProducerLib
         }
 
         public KafkaProducer Send(params KeyValuePair<string, GenericRecord>[] arr)
-        {is
+        {
             if (arr == null || arr.Length == 0)
                 return this;
             
