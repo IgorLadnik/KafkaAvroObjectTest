@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Confluent.Kafka;
 using System.Collections.Concurrent;
@@ -20,6 +21,7 @@ namespace KafkaProducerLib
         private Task _task;
         private bool _isClosing = false;
         private string _topicName;
+        private long _isSending = 0;
         
         public string Error { get; private set; }
 
@@ -81,7 +83,7 @@ namespace KafkaProducerLib
         }
 
         public KafkaProducer Send(params KeyValuePair<string, GenericRecord>[] arr)
-        {
+        {is
             if (arr == null || arr.Length == 0)
                 return this;
             
@@ -89,9 +91,15 @@ namespace KafkaProducerLib
                 foreach (var pair in arr)
                     _cquePair.Enqueue(new KeyValuePair<string, GenericRecord>(pair.Key, pair.Value));
 
+            if (Interlocked.Read(ref _isSending) == 1)
+                return this;
+
             _task = Task.Run(async () =>
             {
                 DeliveryResult<string, GenericRecord> dr = null;
+
+                Interlocked.Increment(ref _isSending);
+
                 while (_cquePair.TryDequeue(out var pair))
                 {
                     try
@@ -109,6 +117,8 @@ namespace KafkaProducerLib
                         break;
                     }
                 }
+
+                Interlocked.Decrement(ref _isSending);
             });
 
             return this;
