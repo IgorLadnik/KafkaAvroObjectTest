@@ -1,0 +1,119 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
+using Confluent.Kafka;
+using Avro.Generic;
+using Confluent.Kafka.SyncOverAsync;
+using Confluent.SchemaRegistry.Serdes;
+using Confluent.SchemaRegistry;
+using KafkaCommonLib;
+
+namespace KafkaConsumerLib
+{ 
+    public class KafkaConsumer
+    {
+        #region Vars
+
+        private IConsumer <string, GenericRecord> _consumer;
+        private CancellationTokenSource _cts;
+        private Action<string, dynamic, DateTime> _consumeResultHandler;
+        private Thread _thread;
+
+        public string Error { get; private set; }
+
+        #endregion // Vars
+
+        #region Ctor
+
+        public KafkaConsumer(string bootstrapServers,
+                             string schemaString, //1 schemaRegistryUrl,
+                             string topic,
+                             string groupId,
+                             string subject,
+                             int version,
+                             int id,
+                             int partition,
+                             int offset,
+                             Action<string, dynamic, DateTime> consumeResultHandler,
+                             Action<string> errorHandler)
+        {
+            if (consumeResultHandler == null || errorHandler == null)
+                throw new Exception("Empty handler");
+
+            _consumeResultHandler = consumeResultHandler;
+
+            _cts = new CancellationTokenSource();
+
+            //1 var schemaRegistry = new CachedSchemaRegistryClient(new SchemaRegistryConfig { SchemaRegistryUrl = schemaRegistryUrl });
+            var schemaRegistry = new SchemaRegistryClient(new Schema(subject, version, id, schemaString)); //1
+
+            _consumer = 
+                new ConsumerBuilder<string, GenericRecord>(
+                    new ConsumerConfig { BootstrapServers = bootstrapServers, GroupId = groupId, AutoOffsetReset = AutoOffsetReset.Earliest })
+                    .SetKeyDeserializer(Deserializers.Utf8)
+                    .SetValueDeserializer(new AvroDeserializer<GenericRecord>(schemaRegistry).AsSyncOverAsync())
+                    .SetErrorHandler((_, e) => errorHandler(e.Reason))
+                    .Build();
+
+            _consumer.Assign(new List<TopicPartitionOffset> { new TopicPartitionOffset(topic, partition, offset) });
+        }
+
+        #endregion // Ctor
+
+        #region StartConsuming Method
+
+        public KafkaConsumer StartConsuming()
+        {
+            Error = null;
+
+            _thread = new Thread(() =>
+            {
+                try
+                {
+                    while (!_cts.IsCancellationRequested)
+                    {
+                        var cr = _consumer.Consume(_cts.Token);
+                        _consumeResultHandler(cr.Key, cr.Value, cr.Timestamp.UtcDateTime);
+                    }
+                }
+                catch (ConsumeException e)
+                {
+                    //Console.WriteLine($"Consuming failed: {e.Error.Reason}");
+                    Error = e.Message;
+                }
+                catch (OperationCanceledException e)
+                {
+                    Error = e.Message;
+                }
+                catch (AccessViolationException e)
+                {
+                    Error = e.Message;
+                }
+                catch (Exception e)
+                {
+                    Error = e.Message;
+                }
+                finally
+                {
+                    _consumer.Close();
+                }
+            });
+            _thread.Start();
+
+            return this;
+        }
+
+        #endregion // StartConsuming Method
+
+        #region Dispose 
+
+        public void Dispose()
+        {
+            _cts.Cancel();
+            if (_thread != null)
+                _thread.Join();
+        }
+
+        #endregion // Dispose
+    }
+}
