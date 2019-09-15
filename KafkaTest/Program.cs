@@ -6,6 +6,7 @@ using Avro.Generic;
 using HttpClientLib;
 using KafkaProducerLib;
 using KafkaConsumerLib;
+using System.Threading;
 
 namespace KafkaTest
 {
@@ -58,18 +59,7 @@ namespace KafkaTest
 
             #endregion // Kafka Consumer
 
-            #region Create GenericRecord Object
-
-            var gr = new GenericRecord(recordSchema);
-            gr.Add("SEQUENCE", 1);
-            gr.Add("ID", 1);
-            gr.Add("CategoryID", 1);
-            gr.Add("YouTubeCategoryTypeID", 1);
-            gr.Add("CreationTime", DateTime.Now.Ticks);
-
-            #endregion // Create GenericRecord Object
-
-            #region Kafka Producer 
+            #region Create Kafka Producer 
 
             var kafkaProducer = new KafkaProducer(
                                                bootstrapServers,
@@ -80,14 +70,40 @@ namespace KafkaTest
                                                id,
                                                partition,
                                                offset,
-                                               e => Console.WriteLine(e))
-                    .Send(new KeyValuePair<string, GenericRecord>($"{Guid.NewGuid()}", gr));
+                                               e => Console.WriteLine(e));
+ 
+            #endregion // Create Kafka Producer 
 
-            #endregion // Kafka Producer 
+            var count = 0;
+            var timer = new Timer(_ => 
+            {
+                var lstTuple = new List<Tuple<string, GenericRecord>>();
+                for (var i = 0; i < 10; i++)
+                {
+                    count++;
 
+                    #region Create GenericRecord Object
+
+                    var gr = new GenericRecord(recordSchema);
+                    gr.Add("SEQUENCE", count);
+                    gr.Add("ID", count);
+                    gr.Add("CategoryID", count);
+                    gr.Add("YouTubeCategoryTypeID", count);
+                    gr.Add("CreationTime", DateTime.Now.Ticks);
+
+                    #endregion // Create GenericRecord Object
+
+                    lstTuple.Add(new Tuple<string, GenericRecord>($"{count}", gr));
+                }
+
+                kafkaProducer.Send(lstTuple.ToArray());
+            }, 
+            null, 0, 5000);
+            
             Console.WriteLine("Press any key to quit...");
             Console.ReadKey();
 
+            timer.Dispose();
             kafkaProducer.Dispose();
             kafkaConsumer.Dispose();
         }
