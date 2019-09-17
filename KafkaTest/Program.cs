@@ -67,7 +67,7 @@ namespace KafkaTest
 
 #endregion // Kafka Consumer
 
-#region Create Kafka Producer 
+            #region Create Kafka Producer 
 
 #if GENERIC_RECORD
             var kafkaProducer = new KafkaProducer<GenericRecord>(
@@ -81,7 +81,7 @@ namespace KafkaTest
                                                offset,
                                                e => Console.WriteLine(e));
  
-#endregion // Create Kafka Producer 
+            #endregion // Create Kafka Producer 
 
             var count = 0;
             var timer = new Timer(_ => 
@@ -95,7 +95,7 @@ namespace KafkaTest
                 {
                     count++;
 
-#region Create GenericRecord Object
+                    #region Create GenericRecord Object
 
 #if GENERIC_RECORD
                     var gr = new GenericRecord(recordConfig.RecordSchema);
@@ -119,7 +119,7 @@ namespace KafkaTest
                     lstTuple.Add(new Tuple<string, com.dv.cache_youtube_category_mapping>($"{count}", yt));
 #endif
 
-#endregion // Create GenericRecord Object
+                    #endregion // Create GenericRecord Object
                 }
 
                 kafkaProducer.Send(lstTuple.ToArray());
