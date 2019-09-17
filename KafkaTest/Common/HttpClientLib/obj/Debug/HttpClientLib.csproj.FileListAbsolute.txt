@@ -1,6 +1,0 @@
-C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\bin\Debug\HttpClientLib.dll
-C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\bin\Debug\HttpClientLib.pdb
-C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\obj\Debug\HttpClientLib.csproj.CoreCompileInputs.cache
-C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\obj\Debug\HttpClientLib.dll
-C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\obj\Debug\HttpClientLib.pdb
-C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\obj\Debug\HttpClientLib.csprojAssemblyReference.cache
