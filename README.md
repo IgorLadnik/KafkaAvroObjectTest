@@ -20,7 +20,7 @@ Difference with usual implementation of Producer and Consumer is in usage of ISc
 in Avro serializer and deserializer.
 Usually class CachedSchemaRegistryClient : ISchemaRegistryClient is used.
 This class itself connects to Schema Registry with HTTP POST to obtain Record Schema.
-It requires mere complex Schema Registry service that can serve such requests.
+It requires more complex Schema Registry service that can serve such requests.
 In contrast in this code Record Schema String is obtained separately and 
 a new class SchemaRegistryClient provides simple implementation of ISchemaRegistryClient interface
 based on already available Record Schema.
