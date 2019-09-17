@@ -36,6 +36,9 @@
     <Reference Include="Confluent.Apache.Avro, Version=1.7.7.6, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Confluent.Apache.Avro.1.7.7.6\lib\net452\Confluent.Apache.Avro.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.12.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Collections.NonGeneric, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Collections.NonGeneric.4.0.1\lib\net46\System.Collections.NonGeneric.dll</HintPath>
@@ -53,12 +56,17 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Common\HttpClientLib\HttpClientLib.csproj">
       <Project>{1a7b498c-e5b5-4f00-bbbc-48e0a0501931}</Project>
       <Name>HttpClientLib</Name>
+    </ProjectReference>
+    <ProjectReference Include="Kafka\KafkaCommonLib\KafkaCommonLib.csproj">
+      <Project>{55681AA6-1FDC-4BE3-A1D3-E3568FED68B1}</Project>
+      <Name>KafkaCommonLib</Name>
     </ProjectReference>
     <ProjectReference Include="Kafka\KafkaConsumerLib\KafkaConsumerLib.csproj">
       <Project>{8cfd89d0-abe3-4746-ad6f-1cc273d67a6d}</Project>

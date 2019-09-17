@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
+using Newtonsoft.Json;
 using Avro;
 using Avro.Generic;
 using HttpClientLib;
 using KafkaProducerLib;
 using KafkaConsumerLib;
-using System.Threading;
+using Newtonsoft.Json.Linq;
+using KafkaCommonLib;
 
 namespace KafkaTest
 {
@@ -16,7 +19,7 @@ namespace KafkaTest
         {
             #region Config
 
-            var schemaRegistryUrl = "http://localhost:9797/schema.html";
+            var schemaRegistryUrl = "http://localhost:9797/schema.json";
 
             var bootstrapServers = "localhost:9092";
             var topic = "stream-topic";
@@ -25,13 +28,7 @@ namespace KafkaTest
             int partition = 0;
             int offset = 0;
 
-            var subject = "cache-youtube-category-mapping-value";
-            var version = 5;
-            var id = 322272;
-
-            var schemaString = GetSchemaString(schemaRegistryUrl);
-
-            var recordSchema = (RecordSchema)RecordSchema.Parse(schemaString);
+            var recordConfig = new RecordConfig(schemaRegistryUrl);
 
             #endregion // Config
 
@@ -39,12 +36,9 @@ namespace KafkaTest
 
             var kafkaConsumer = new KafkaConsumer(
                                              bootstrapServers,
-                                             schemaString,
+                                             recordConfig,
                                              topic,
                                              groupId,
-                                             subject,
-                                             version,
-                                             id,
                                              partition,
                                              offset,
                                              (key, value, dt) =>
@@ -63,11 +57,8 @@ namespace KafkaTest
 
             var kafkaProducer = new KafkaProducer(
                                                bootstrapServers,
-                                               schemaString,
+                                               recordConfig,
                                                topic,
-                                               subject,
-                                               version,
-                                               id,
                                                partition,
                                                offset,
                                                e => Console.WriteLine(e));
@@ -84,7 +75,7 @@ namespace KafkaTest
 
                     #region Create GenericRecord Object
 
-                    var gr = new GenericRecord(recordSchema);
+                    var gr = new GenericRecord(recordConfig.RecordSchema);
                     gr.Add("SEQUENCE", count);
                     gr.Add("ID", count);
                     gr.Add("CategoryID", count);
@@ -108,12 +99,19 @@ namespace KafkaTest
             kafkaConsumer.Dispose();
         }
 
-        private static string GetSchemaString(string schemaRegistryUrl)
+        private static IDictionary<string, object> GetSchemaString(string schemaRegistryUrl)
         {
             try
             {
-                return Encoding.Default.GetString(new HttpClient().Get(schemaRegistryUrl, 100))
-                                       .Replace(" ", string.Empty).Replace("\n", "").Replace("\r", "").Replace("\\", "");
+                var str = Encoding.Default.GetString(new HttpClient().Get(schemaRegistryUrl, 100))
+                                       .Replace(" ", string.Empty).Replace("\n", "").Replace("\r", "").Replace("\t", "").Replace("\\", "");
+
+                var jOb = JObject.Parse(str);
+                var dctProp = new Dictionary<string, object>();
+                foreach (var property in jOb.Properties())
+                    dctProp[property.Name] = property.Value;
+
+                return dctProp;
             }
             catch (Exception e)
             {

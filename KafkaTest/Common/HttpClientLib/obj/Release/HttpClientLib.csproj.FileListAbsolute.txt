@@ -1,0 +1,6 @@
+C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\bin\Release\HttpClientLib.dll
+C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\bin\Release\HttpClientLib.pdb
+C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\obj\Release\HttpClientLib.csprojAssemblyReference.cache
+C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\obj\Release\HttpClientLib.csproj.CoreCompileInputs.cache
+C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\obj\Release\HttpClientLib.dll
+C:\prj\KafkaAvroObjectTest\KafkaTest\Common\HttpClientLib\obj\Release\HttpClientLib.pdb

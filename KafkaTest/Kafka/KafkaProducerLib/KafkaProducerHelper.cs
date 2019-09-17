@@ -30,11 +30,8 @@ namespace KafkaProducerLib
         #region Ctor
 
         public KafkaProducer(string bootstrapServers,
-                             string schemaString, //1 string schemaRegistryUrl,
+                             RecordConfig recordConfig,
                              string topic,
-                             string subject,
-                             int version,
-                             int id, 
                              int partition,
                              int offset,
                              Action<string> errorHandler)
@@ -47,7 +44,7 @@ namespace KafkaProducerLib
             //    SchemaRegistryUrl = schemaRegistryUrl,
             //    SchemaRegistryRequestTimeoutMs = 5000,
             //});
-            var schemaRegistry = new SchemaRegistryClient(new Schema(subject, version, id, schemaString)); //1
+            var schemaRegistry = new SchemaRegistryClient(new Schema(recordConfig.Subject, recordConfig.Version, recordConfig.Id, recordConfig.SchemaString)); //1
 
             _producer =
                 new ProducerBuilder<string, GenericRecord>(new ProducerConfig { BootstrapServers = bootstrapServers })
