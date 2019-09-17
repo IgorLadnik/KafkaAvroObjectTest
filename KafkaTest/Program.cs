@@ -1,9 +1,9 @@
-﻿using System;
+﻿#define GENERIC_RECORD
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
-using Newtonsoft.Json;
-using Avro;
 using Avro.Generic;
 using HttpClientLib;
 using KafkaProducerLib;
@@ -34,7 +34,12 @@ namespace KafkaTest
 
             #region Kafka Consumer
 
-            var kafkaConsumer = new KafkaConsumer(
+#if GENERIC_RECORD
+            var kafkaConsumer = new KafkaConsumer<GenericRecord>(
+#else
+            var kafkaConsumer = new KafkaConsumer<com.dv.cache_youtube_category_mapping>(                 
+#endif
+
                                              bootstrapServers,
                                              recordConfig,
                                              topic,
@@ -44,18 +49,31 @@ namespace KafkaTest
                                              (key, value, dt) =>
                                              {
                                                  Console.WriteLine($"Consumed Object:\nkey = {key}");
+#if GENERIC_RECORD
                                                  var genRecord = (GenericRecord)value;
                                                  foreach (var field in genRecord.Schema.Fields)
                                                      Console.WriteLine($"  {field.Name} = {genRecord[field.Name]}");
+#else
+                                                 var yt = (com.dv.cache_youtube_category_mapping)value;
+                                                 Console.WriteLine($"  SEQUENCE = {yt.SEQUENCE}");
+                                                 Console.WriteLine($"  ID = {yt.ID}");
+                                                 Console.WriteLine($"  CategoryID = {yt.CategoryID}");
+                                                 Console.WriteLine($"  YouTubeCategoryTypeID = {yt.YouTubeCategoryTypeID}");
+                                                 Console.WriteLine($"  CreationTime = {yt.CreationTime}");
+#endif
                                              },
                                              e => Console.WriteLine(e))
                     .StartConsuming();
 
-            #endregion // Kafka Consumer
+#endregion // Kafka Consumer
 
-            #region Create Kafka Producer 
+#region Create Kafka Producer 
 
-            var kafkaProducer = new KafkaProducer(
+#if GENERIC_RECORD
+            var kafkaProducer = new KafkaProducer<GenericRecord>(
+#else
+            var kafkaProducer = new KafkaProducer<com.dv.cache_youtube_category_mapping>(
+#endif
                                                bootstrapServers,
                                                recordConfig,
                                                topic,
@@ -63,18 +81,23 @@ namespace KafkaTest
                                                offset,
                                                e => Console.WriteLine(e));
  
-            #endregion // Create Kafka Producer 
+#endregion // Create Kafka Producer 
 
             var count = 0;
             var timer = new Timer(_ => 
             {
+#if GENERIC_RECORD
                 var lstTuple = new List<Tuple<string, GenericRecord>>();
+#else
+                var lstTuple = new List<Tuple<string, com.dv.cache_youtube_category_mapping>>();
+#endif
                 for (var i = 0; i < 10; i++)
                 {
                     count++;
 
-                    #region Create GenericRecord Object
+#region Create GenericRecord Object
 
+#if GENERIC_RECORD
                     var gr = new GenericRecord(recordConfig.RecordSchema);
                     gr.Add("SEQUENCE", count);
                     gr.Add("ID", count);
@@ -82,9 +105,21 @@ namespace KafkaTest
                     gr.Add("YouTubeCategoryTypeID", count);
                     gr.Add("CreationTime", DateTime.Now.Ticks);
 
-                    #endregion // Create GenericRecord Object
-
                     lstTuple.Add(new Tuple<string, GenericRecord>($"{count}", gr));
+#else
+                    var yt = new com.dv.cache_youtube_category_mapping
+                    {
+                        SEQUENCE = count,
+                        ID = count,
+                        CategoryID = count,
+                        YouTubeCategoryTypeID = count,
+                        CreationTime = DateTime.Now.Ticks
+                    };
+
+                    lstTuple.Add(new Tuple<string, com.dv.cache_youtube_category_mapping>($"{count}", yt));
+#endif
+
+#endregion // Create GenericRecord Object
                 }
 
                 kafkaProducer.Send(lstTuple.ToArray());

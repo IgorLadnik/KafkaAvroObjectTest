@@ -10,11 +10,11 @@ using KafkaCommonLib;
 
 namespace KafkaConsumerLib
 { 
-    public class KafkaConsumer
+    public class KafkaConsumer<T>
     {
         #region Vars
 
-        private IConsumer <string, GenericRecord> _consumer;
+        private IConsumer <string, T> _consumer;
         private CancellationTokenSource _cts;
         private Action<string, dynamic, DateTime> _consumeResultHandler;
         private Thread _thread;
@@ -44,11 +44,10 @@ namespace KafkaConsumerLib
             //1 var schemaRegistry = new CachedSchemaRegistryClient(new SchemaRegistryConfig { SchemaRegistryUrl = schemaRegistryUrl });
             var schemaRegistry = new SchemaRegistryClient(new Schema(recordConfig.Subject, recordConfig.Version, recordConfig.Id, recordConfig.SchemaString)); //1
 
-            _consumer = 
-                new ConsumerBuilder<string, GenericRecord>(
+            _consumer = new ConsumerBuilder<string, T>(
                     new ConsumerConfig { BootstrapServers = bootstrapServers, GroupId = groupId, AutoOffsetReset = AutoOffsetReset.Earliest })
                     .SetKeyDeserializer(Deserializers.Utf8)
-                    .SetValueDeserializer(new AvroDeserializer<GenericRecord>(schemaRegistry).AsSyncOverAsync())
+                    .SetValueDeserializer(new AvroDeserializer<T>(schemaRegistry).AsSyncOverAsync())
                     .SetErrorHandler((_, e) => errorHandler(e.Reason))
                     .Build();
 
@@ -59,7 +58,7 @@ namespace KafkaConsumerLib
 
         #region StartConsuming Method
 
-        public KafkaConsumer StartConsuming()
+        public KafkaConsumer<T> StartConsuming()
         {
             Error = null;
 
