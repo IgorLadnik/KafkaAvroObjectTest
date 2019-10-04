@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-using HttpClientLib;
 using Avro;
+using HttpClientLib;
 
 namespace KafkaCommonLib
 {
@@ -15,7 +13,7 @@ namespace KafkaCommonLib
         public string Subject { get; }
         public int Version { get; }
         public int Id { get; }
-        public RecordSchema RecordSchema { get; }
+        public RecordSchema RecordSchema { get; private set; }
 
         public RecordConfig(string schemaRegistryUrl)
         {
@@ -31,12 +29,31 @@ namespace KafkaCommonLib
 
         private static IDictionary<string, object> GetSchemaString(string schemaRegistryUrl)
         {
+            string str;
+
+            try 
+            {
+                str = Encoding.Default.GetString(new HttpClient().Get(schemaRegistryUrl, 100));
+            } 
+            catch
+            {
+                try
+                {
+                    str = System.IO.File.ReadAllText(schemaRegistryUrl);
+                }
+                catch
+                {
+                    Console.WriteLine($"ERROR: Schema string was not obtained from \"{schemaRegistryUrl}\".");
+                    return null;
+                }
+            }
+
+            if (string.IsNullOrEmpty(str))
+                return null;
+
             try
             {
-                var str = Encoding.Default.GetString(new HttpClient().Get(schemaRegistryUrl, 100))
-                                       .Replace(" ", string.Empty).Replace("\n", "").Replace("\r", "").Replace("\t", "").Replace("\\", "");
-
-                var jOb = JObject.Parse(str);
+                var jOb = JObject.Parse(str.Replace(" ", string.Empty).Replace("\n", "").Replace("\r", "").Replace("\t", "").Replace("\\", ""));
                 var dctProp = new Dictionary<string, object>();
                 foreach (var property in jOb.Properties())
                     dctProp[property.Name] = property.Value;

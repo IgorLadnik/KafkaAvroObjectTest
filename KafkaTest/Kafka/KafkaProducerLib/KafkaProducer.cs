@@ -11,13 +11,13 @@ using KafkaCommonLib;
 
 namespace KafkaProducerLib
 {
-    public class KafkaProducer<T>
+    public class KafkaProducer
     {
         #region Vars
 
-        private ConcurrentQueue<KeyValuePair<string, T>> _cquePair = new ConcurrentQueue<KeyValuePair<string, T>>();
+        private ConcurrentQueue<KeyValuePair<string, byte[]>> _cquePair = new ConcurrentQueue<KeyValuePair<string, byte[]>>();
 
-        private IProducer<string, T> _producer;
+        private IProducer<string, byte[]> _producer;
         private Task _task;
         private bool _isClosing = false;
         private string _topicName;
@@ -47,9 +47,9 @@ namespace KafkaProducerLib
             var schemaRegistry = new SchemaRegistryClient(new Schema(recordConfig.Subject, recordConfig.Version, recordConfig.Id, recordConfig.SchemaString)); //1
 
             _producer =
-                new ProducerBuilder<string, T>(new ProducerConfig { BootstrapServers = bootstrapServers })
+                new ProducerBuilder<string, byte[]>(new ProducerConfig { BootstrapServers = bootstrapServers })
                     .SetKeySerializer(Serializers.Utf8)
-                    .SetValueSerializer(new AvroSerializer<T>(schemaRegistry))
+                    .SetValueSerializer(Serializers.ByteArray/*new AvroSerializer<T>(schemaRegistry)*/)
                     .Build();
 
             _topicName = topic;
@@ -59,41 +59,41 @@ namespace KafkaProducerLib
 
         #region Send Methods 
 
-        public KafkaProducer<T> Send(string key, T value)
+        public KafkaProducer Send(string key, byte[] value)
         {
             if (string.IsNullOrEmpty(key) || value == null)
                 return this;
 
-            return Send(new KeyValuePair<string, T>(key, value));
+            return Send(new KeyValuePair<string, byte[]>(key, value));
         }
 
-        public KafkaProducer<T> Send(params Tuple<string, T>[] arr)
+        public KafkaProducer Send(params Tuple<string, byte[]>[] arr)
         {
             if (arr == null || arr.Length == 0)
                 return this;
 
-            var lst = new List<KeyValuePair<string, T>>();
+            var lst = new List<KeyValuePair<string, byte[]>>();
             foreach (var tuple in arr)
-                lst.Add(new KeyValuePair<string, T>(tuple.Item1, tuple.Item2));
+                lst.Add(new KeyValuePair<string, byte[]>(tuple.Item1, tuple.Item2));
 
             return Send(lst.ToArray());
         }
 
-        public KafkaProducer<T> Send(params KeyValuePair<string, T>[] arr)
+        public KafkaProducer Send(params KeyValuePair<string, byte[]>[] arr)
         {
             if (arr == null || arr.Length == 0)
                 return this;
             
             if (!_isClosing)
                 foreach (var pair in arr)
-                    _cquePair.Enqueue(new KeyValuePair<string, T>(pair.Key, pair.Value));
+                    _cquePair.Enqueue(new KeyValuePair<string, byte[]>(pair.Key, pair.Value));
 
             if (Interlocked.Read(ref _isSending) == 1)
                 return this;
 
             _task = Task.Run(async () =>
             {
-                DeliveryResult<string, T> dr = null;
+                DeliveryResult<string, byte[]> dr = null;
 
                 Interlocked.Increment(ref _isSending);
 
@@ -101,7 +101,7 @@ namespace KafkaProducerLib
                 {
                     try
                     {
-                        dr = await _producer.ProduceAsync(_topicName, new Message<string, T> { Key = pair.Key, Value = pair.Value });
+                        dr = await _producer.ProduceAsync(_topicName, new Message<string, byte[]> { Key = pair.Key, Value = pair.Value });
                             //.ContinueWith(task => task.IsFaulted
                             //         ? $"error producing message: {task.Exception.Message}"
                             //         : $"produced to: {task.Result.TopicPartitionOffset}")

@@ -116,6 +116,7 @@
     <Compile Include="RecordConfig.cs" />
     <Compile Include="SchemaRegistryClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="StdSerDe.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

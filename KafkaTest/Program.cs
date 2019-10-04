@@ -1,6 +1,4 @@
-﻿#define GENERIC_RECORD
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -19,11 +17,12 @@ namespace KafkaTest
         {
             #region Config
 
-            var schemaRegistryUrl = "http://localhost:9797/schema.json";
+            //var schemaRegistryUrl = "http://localhost:9797/schema.json";
+            var schemaRegistryUrl = @"..\..\..\wwwroot\schema.json";
 
             var bootstrapServers = "localhost:9092";
-            var topic = "stream-topic";
-            var groupId = "simple-consumer";
+            var topic = "quick-start";      // "stream-topic";
+            var groupId = "consumer-group"; // "simple-consumer";
 
             int partition = 0;
             int offset = 0;
@@ -34,12 +33,9 @@ namespace KafkaTest
 
             #region Kafka Consumer
 
-#if GENERIC_RECORD
-            var kafkaConsumer = new KafkaConsumer<GenericRecord>(
-#else
-            var kafkaConsumer = new KafkaConsumer<com.dv.cache_youtube_category_mapping>(                 
-#endif
+            var serDeHelper = new SerDeHelper(recordConfig);
 
+            var kafkaConsumer = new KafkaConsumer(
                                              bootstrapServers,
                                              recordConfig,
                                              topic,
@@ -49,55 +45,37 @@ namespace KafkaTest
                                              (key, value, dt) =>
                                              {
                                                  Console.WriteLine($"Consumed Object:\nkey = {key}");
-#if GENERIC_RECORD
-                                                 var genRecord = (GenericRecord)value;
+                                                 var genRecord = serDeHelper.DeserializeAsync(value, false, null).Result;
                                                  foreach (var field in genRecord.Schema.Fields)
                                                      Console.WriteLine($"  {field.Name} = {genRecord[field.Name]}");
-#else
-                                                 var yt = (com.dv.cache_youtube_category_mapping)value;
-                                                 Console.WriteLine($"  SEQUENCE = {yt.SEQUENCE}");
-                                                 Console.WriteLine($"  ID = {yt.ID}");
-                                                 Console.WriteLine($"  CategoryID = {yt.CategoryID}");
-                                                 Console.WriteLine($"  YouTubeCategoryTypeID = {yt.YouTubeCategoryTypeID}");
-                                                 Console.WriteLine($"  CreationTime = {yt.CreationTime}");
-#endif
                                              },
                                              e => Console.WriteLine(e))
                     .StartConsuming();
 
-#endregion // Kafka Consumer
+            #endregion // Kafka Consumer
 
             #region Create Kafka Producer 
 
-#if GENERIC_RECORD
-            var kafkaProducer = new KafkaProducer<GenericRecord>(
-#else
-            var kafkaProducer = new KafkaProducer<com.dv.cache_youtube_category_mapping>(
-#endif
-                                               bootstrapServers,
-                                               recordConfig,
-                                               topic,
-                                               partition,
-                                               offset,
-                                               e => Console.WriteLine(e));
+            var kafkaProducer = new KafkaProducer(
+                                            bootstrapServers,
+                                            recordConfig,
+                                            topic,
+                                            partition,
+                                            offset,
+                                            e => Console.WriteLine(e));
  
             #endregion // Create Kafka Producer 
 
             var count = 0;
             var timer = new Timer(_ => 
             {
-#if GENERIC_RECORD
-                var lstTuple = new List<Tuple<string, GenericRecord>>();
-#else
-                var lstTuple = new List<Tuple<string, com.dv.cache_youtube_category_mapping>>();
-#endif
+                var lstTuple = new List<Tuple<string, byte[]>>();
                 for (var i = 0; i < 10; i++)
                 {
                     count++;
 
                     #region Create GenericRecord Object
 
-#if GENERIC_RECORD
                     var gr = new GenericRecord(recordConfig.RecordSchema);
                     gr.Add("SEQUENCE", count);
                     gr.Add("ID", count);
@@ -105,19 +83,7 @@ namespace KafkaTest
                     gr.Add("YouTubeCategoryTypeID", count);
                     gr.Add("CreationTime", DateTime.Now.Ticks);
 
-                    lstTuple.Add(new Tuple<string, GenericRecord>($"{count}", gr));
-#else
-                    var yt = new com.dv.cache_youtube_category_mapping
-                    {
-                        SEQUENCE = count,
-                        ID = count,
-                        CategoryID = count,
-                        YouTubeCategoryTypeID = count,
-                        CreationTime = DateTime.Now.Ticks
-                    };
-
-                    lstTuple.Add(new Tuple<string, com.dv.cache_youtube_category_mapping>($"{count}", yt));
-#endif
+                    lstTuple.Add(new Tuple<string, byte[]>($"{count}", serDeHelper.SerializeAsync(gr, topic).Result));
 
                     #endregion // Create GenericRecord Object
                 }
@@ -156,48 +122,4 @@ namespace KafkaTest
         }
     }
 }
-
-//var schemaString =
-//    "{" +
-//            //"'subject':'cache-youtube-category-mapping-value'," +
-//            //"'version':5," +
-//            //"'id':322272," +
-//            //"'schema':" +
-//            //"{" +
-//            "'type':'record'," +
-//            "'name':'cache_youtube_category_mapping'," +
-//            "'namespace':'com.dv'," +
-//            "'fields':" +
-//            "[" +
-//                "{'name':'SEQUENCE',              'type':'int'}," +
-//                "{'name':'ID',                    'type':'int'}," +
-//                "{'name':'CategoryID',            'type':['null', 'int']}," +
-//                "{'name':'YouTubeCategoryTypeID', 'type':['null', 'int']}," +
-//                "{'name':'CreationTime',          'type':['null', 'long'], 'default':null}" +
-//            "]" +
-//    //"}" +
-//    "}";
-//schemaString = schemaString.Replace("\n", "").Replace("\r", "").Replace(" ", "").Replace("'", "\"");
-
-//var subject = "cache-youtube-category-mapping-value";
-
-//var schemaString = "{\"type\":\"record\",\"name\":\"cache_youtube_category_mapping\",\"namespace\":\"com.dv\",\"fields\":[{\"name\":\"SEQUENCE\",\"type\":\"int\"},{\"name\":\"ID\",\"type\":\"int\"},{\"name\":\"CategoryID\",\"type\":[\"null\",\"int\"],\"default\":null},{\"name\":\"YouTubeCategoryTypeID\",\"type\":[\"null\",\"int\"],\"default\":null},{\"name\":\"CreationTime\",\"type\":[\"null\",\"long\"],\"default\":null}]}";
-
-
-//Here correct bootstrap servers:
-//var bootstrapServers = "nycd-og-kafkacluster01.doubleverify.corp:9092,nycd-og-kafkacluster02.doubleverify.corp:9092,nycd-og-kafkacluster03.doubleverify.corp:9092";
-
-//And here is correct schema registry:
-
-//var schemaRegistryUrl = "http://d-og-schemaregistry.doubleverify.corp:8081";
-
-
-
-//var schemaRegistryUrl = "http://d-og-schemaregistry.doubleverify.corp:8081";
-
-//var schemaRegistryUrl = "http://d-og-schemaregistry.doubleverify.corp:8081/subjects/cache-youtube-category-mapping-value/versions/5";           
-//var bootstrapServers = "nycs-og-kafkacluster01.doubleverify.prod:9092,nycs-og-kafkacluster01.doubleverify.prod:9092,nycs-og-kafkacluster01.doubleverify.prod:9092";
-//var groupId =  "simple-C#-consumer"; //$"{Guid.NewGuid()}";
-//var topic = "dv-cls-page-live";
-
 
