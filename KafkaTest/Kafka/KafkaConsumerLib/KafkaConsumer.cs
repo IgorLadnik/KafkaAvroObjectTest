@@ -26,7 +26,7 @@ namespace KafkaConsumerLib
         #region Ctor
 
         public KafkaConsumer(string bootstrapServers,
-                             RecordConfig recordConfig,
+                             //RecordConfig recordConfig,
                              string topic,
                              string groupId,
                              int partition,
@@ -42,7 +42,7 @@ namespace KafkaConsumerLib
             _cts = new CancellationTokenSource();
 
             //1 var schemaRegistry = new CachedSchemaRegistryClient(new SchemaRegistryConfig { SchemaRegistryUrl = schemaRegistryUrl });
-            var schemaRegistry = new SchemaRegistryClient(new Schema(recordConfig.Subject, recordConfig.Version, recordConfig.Id, recordConfig.SchemaString)); //1
+            //var schemaRegistry = new SchemaRegistryClient(new Schema(recordConfig.Subject, recordConfig.Version, recordConfig.Id, recordConfig.SchemaString)); //1
 
             _consumer = new ConsumerBuilder<string, byte[]>(
                     new ConsumerConfig { BootstrapServers = bootstrapServers, GroupId = groupId, AutoOffsetReset = AutoOffsetReset.Earliest })

@@ -37,7 +37,7 @@ namespace KafkaTest
 
             var kafkaConsumer = new KafkaConsumer(
                                              bootstrapServers,
-                                             recordConfig,
+                                             //recordConfig,
                                              topic,
                                              groupId,
                                              partition,
@@ -60,8 +60,8 @@ namespace KafkaTest
                                             bootstrapServers,
                                             recordConfig,
                                             topic,
-                                            partition,
-                                            offset,
+                                            //partition,
+                                            //offset,
                                             e => Console.WriteLine(e));
  
             #endregion // Create Kafka Producer 

@@ -32,8 +32,8 @@ namespace KafkaProducerLib
         public KafkaProducer(string bootstrapServers,
                              RecordConfig recordConfig,
                              string topic,
-                             int partition,
-                             int offset,
+                             //int partition,
+                             //int offset,
                              Action<string> errorHandler)
         {
             if (errorHandler == null)
@@ -44,7 +44,7 @@ namespace KafkaProducerLib
             //    SchemaRegistryUrl = schemaRegistryUrl,
             //    SchemaRegistryRequestTimeoutMs = 5000,
             //});
-            var schemaRegistry = new SchemaRegistryClient(new Schema(recordConfig.Subject, recordConfig.Version, recordConfig.Id, recordConfig.SchemaString)); //1
+            //var schemaRegistry = new SchemaRegistryClient(new Schema(recordConfig.Subject, recordConfig.Version, recordConfig.Id, recordConfig.SchemaString)); //1
 
             _producer =
                 new ProducerBuilder<string, byte[]>(new ProducerConfig { BootstrapServers = bootstrapServers })
