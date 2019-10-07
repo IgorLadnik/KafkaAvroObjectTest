@@ -7,6 +7,7 @@ using Confluent.Kafka.SyncOverAsync;
 using Confluent.SchemaRegistry.Serdes;
 using Confluent.SchemaRegistry;
 using KafkaCommonLib;
+using System.Threading.Tasks;
 
 namespace KafkaConsumerLib
 { 
@@ -16,8 +17,10 @@ namespace KafkaConsumerLib
 
         private IConsumer <string, byte[]> _consumer;
         private CancellationTokenSource _cts;
-        private Action<string, dynamic, DateTime> _consumeResultHandler;
+        private AvroDeserializer<GenericRecord> _avroDeserializer;
+        private Action<string, GenericRecord, DateTime> _consumeResultHandler;
         private Thread _thread;
+        private string _topic;
 
         public string Error { get; private set; }
 
@@ -26,7 +29,7 @@ namespace KafkaConsumerLib
         #region Ctor
 
         public KafkaConsumer(string bootstrapServers,
-                             //RecordConfig recordConfig,
+                             RecordConfig recordConfig,
                              string topic,
                              string groupId,
                              int partition,
@@ -44,6 +47,9 @@ namespace KafkaConsumerLib
             //1 var schemaRegistry = new CachedSchemaRegistryClient(new SchemaRegistryConfig { SchemaRegistryUrl = schemaRegistryUrl });
             //var schemaRegistry = new SchemaRegistryClient(new Schema(recordConfig.Subject, recordConfig.Version, recordConfig.Id, recordConfig.SchemaString)); //1
 
+            var schemaRegistry = new SchemaRegistryClient(new Schema(recordConfig.Subject, recordConfig.Version, recordConfig.Id, recordConfig.SchemaString)); //1
+            _avroDeserializer = new AvroDeserializer<GenericRecord>(schemaRegistry);
+
             _consumer = new ConsumerBuilder<string, byte[]>(
                     new ConsumerConfig { BootstrapServers = bootstrapServers, GroupId = groupId, AutoOffsetReset = AutoOffsetReset.Earliest })
                     .SetKeyDeserializer(Deserializers.Utf8)
@@ -52,9 +58,18 @@ namespace KafkaConsumerLib
                     .Build();
 
             _consumer.Assign(new List<TopicPartitionOffset> { new TopicPartitionOffset(topic, partition, offset) });
+
+            _topic = topic;
         }
 
         #endregion // Ctor
+
+        #region Deserialize
+
+        public async Task<GenericRecord> DeserializeAsync(byte[] bts, string topic) =>
+           await _avroDeserializer.DeserializeAsync(bts, false, new SerializationContext(MessageComponentType.Value, topic));
+
+        #endregion // Deserialize
 
         #region StartConsuming Method
 
@@ -62,14 +77,14 @@ namespace KafkaConsumerLib
         {
             Error = null;
 
-            _thread = new Thread(() =>
+            _thread = new Thread(async () =>
             {
                 try
                 {
                     while (!_cts.IsCancellationRequested)
                     {
                         var cr = _consumer.Consume(_cts.Token);
-                        _consumeResultHandler(cr.Key, cr.Value, cr.Timestamp.UtcDateTime);
+                        _consumeResultHandler(cr.Key, await DeserializeAsync(cr.Value, _topic), cr.Timestamp.UtcDateTime);
                     }
                 }
                 catch (ConsumeException e)

@@ -15,12 +15,13 @@ namespace KafkaProducerLib
     {
         #region Vars
 
-        private ConcurrentQueue<KeyValuePair<string, byte[]>> _cquePair = new ConcurrentQueue<KeyValuePair<string, byte[]>>();
+        private ConcurrentQueue<KeyValuePair<string, GenericRecord>> _cquePair = new ConcurrentQueue<KeyValuePair<string, GenericRecord>>();
 
+        private AvroSerializer<GenericRecord> _avroSerializer;
         private IProducer<string, byte[]> _producer;
         private Task _task;
         private bool _isClosing = false;
-        private string _topicName;
+        private string _topic;
         private long _isSending = 0;
         
         public string Error { get; private set; }
@@ -46,47 +47,57 @@ namespace KafkaProducerLib
             //});
             //var schemaRegistry = new SchemaRegistryClient(new Schema(recordConfig.Subject, recordConfig.Version, recordConfig.Id, recordConfig.SchemaString)); //1
 
+            var schemaRegistry = new SchemaRegistryClient(new Schema(recordConfig.Subject, recordConfig.Version, recordConfig.Id, recordConfig.SchemaString)); //1
+            _avroSerializer = new AvroSerializer<GenericRecord>(schemaRegistry);
+
             _producer =
                 new ProducerBuilder<string, byte[]>(new ProducerConfig { BootstrapServers = bootstrapServers })
                     .SetKeySerializer(Serializers.Utf8)
                     .SetValueSerializer(Serializers.ByteArray/*new AvroSerializer<T>(schemaRegistry)*/)
                     .Build();
 
-            _topicName = topic;
+            _topic = topic;
         }
 
         #endregion // Ctor
 
+        #region Serialize
+
+        public async Task<byte[]> SerializeAsync(GenericRecord genericRecord, string topic) =>
+            await _avroSerializer.SerializeAsync(genericRecord, new SerializationContext(MessageComponentType.Value, topic));
+
+        #endregion // Serialize
+
         #region Send Methods 
 
-        public KafkaProducer Send(string key, byte[] value)
+        public KafkaProducer Send(string key, GenericRecord value)
         {
             if (string.IsNullOrEmpty(key) || value == null)
                 return this;
 
-            return Send(new KeyValuePair<string, byte[]>(key, value));
+            return Send(new KeyValuePair<string, GenericRecord>(key, value));
         }
 
-        public KafkaProducer Send(params Tuple<string, byte[]>[] arr)
+        public KafkaProducer Send(params Tuple<string, GenericRecord>[] arr)
         {
             if (arr == null || arr.Length == 0)
                 return this;
 
-            var lst = new List<KeyValuePair<string, byte[]>>();
+            var lst = new List<KeyValuePair<string, GenericRecord>>();
             foreach (var tuple in arr)
-                lst.Add(new KeyValuePair<string, byte[]>(tuple.Item1, tuple.Item2));
+                lst.Add(new KeyValuePair<string, GenericRecord>(tuple.Item1, tuple.Item2));
 
             return Send(lst.ToArray());
         }
 
-        public KafkaProducer Send(params KeyValuePair<string, byte[]>[] arr)
+        public KafkaProducer Send(params KeyValuePair<string, GenericRecord>[] arr)
         {
             if (arr == null || arr.Length == 0)
                 return this;
             
             if (!_isClosing)
                 foreach (var pair in arr)
-                    _cquePair.Enqueue(new KeyValuePair<string, byte[]>(pair.Key, pair.Value));
+                    _cquePair.Enqueue(new KeyValuePair<string, GenericRecord>(pair.Key, pair.Value));
 
             if (Interlocked.Read(ref _isSending) == 1)
                 return this;
@@ -101,7 +112,7 @@ namespace KafkaProducerLib
                 {
                     try
                     {
-                        dr = await _producer.ProduceAsync(_topicName, new Message<string, byte[]> { Key = pair.Key, Value = pair.Value });
+                        dr = await _producer.ProduceAsync(_topic, new Message<string, byte[]> { Key = pair.Key, Value = await SerializeAsync(pair.Value, _topic) });
                             //.ContinueWith(task => task.IsFaulted
                             //         ? $"error producing message: {task.Exception.Message}"
                             //         : $"produced to: {task.Result.TopicPartitionOffset}")

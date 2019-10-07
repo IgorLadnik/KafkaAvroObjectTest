@@ -33,11 +33,9 @@ namespace KafkaTest
 
             #region Kafka Consumer
 
-            var serDeHelper = new SerDeHelper(recordConfig);
-
             var kafkaConsumer = new KafkaConsumer(
                                              bootstrapServers,
-                                             //recordConfig,
+                                             recordConfig,
                                              topic,
                                              groupId,
                                              partition,
@@ -45,9 +43,8 @@ namespace KafkaTest
                                              (key, value, dt) =>
                                              {
                                                  Console.WriteLine($"Consumed Object:\nkey = {key}");
-                                                 var genRecord = serDeHelper.DeserializeAsync(value, false, null).Result;
-                                                 foreach (var field in genRecord.Schema.Fields)
-                                                     Console.WriteLine($"  {field.Name} = {genRecord[field.Name]}");
+                                                 foreach (var field in value.Schema.Fields)
+                                                     Console.WriteLine($"  {field.Name} = {value[field.Name]}");
                                              },
                                              e => Console.WriteLine(e))
                     .StartConsuming();
@@ -69,7 +66,7 @@ namespace KafkaTest
             var count = 0;
             var timer = new Timer(_ => 
             {
-                var lstTuple = new List<Tuple<string, byte[]>>();
+                var lstTuple = new List<Tuple<string, GenericRecord>>();
                 for (var i = 0; i < 10; i++)
                 {
                     count++;
@@ -83,7 +80,7 @@ namespace KafkaTest
                     gr.Add("YouTubeCategoryTypeID", count);
                     gr.Add("CreationTime", DateTime.Now.Ticks);
 
-                    lstTuple.Add(new Tuple<string, byte[]>($"{count}", serDeHelper.SerializeAsync(gr, topic).Result));
+                    lstTuple.Add(new Tuple<string, GenericRecord>($"{count}", gr));
 
                     #endregion // Create GenericRecord Object
                 }
